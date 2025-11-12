@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ridify - Scan</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+      background-color: #f5f5f5;
+    }
+    video {
+      width: 100%;
+      max-width: 400px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 20px;
+      padding: 10px;
+      border-radius: 8px;
+      display: inline-block;
+      min-width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ridify - Scan</h1>
+  <p>Please allow camera and location access to scan the QR code.</p>
+  <video id="preview" playsinline></video>
+  <div id="status"></div>
+  
+  <!-- Use module type to import the QR scanner library -->
+  <script type="module">
+    import QrScanner from 'https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js';
+    const video = document.getElementById('preview');
+    const statusEl = document.getElementById('status');
+    const params = new URLSearchParams(window.location.search);
+    const expectedToken = params.get('token');
+    const originLat = parseFloat(params.get('lat'));
+    const originLon = parseFloat(params.get('lon'));
+    // Validate query parameters
+    if (!expectedToken || isNaN(originLat) || isNaN(originLon)) {
+      statusEl.textContent = 'Invalid or missing parameters in the link.';
+      statusEl.style.backgroundColor = 'lightcoral';
+    } else {
+      // Request user's current geolocation
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const currentLat = pos.coords.latitude;
+        const currentLon = pos.coords.longitude;
+        try {
+          // Request camera access
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          video.srcObject = stream;
+          await video.play();
+          // Initialize QR scanner
+          const scanner = new QrScanner(video, result => {
+            // Stop scanning once we have a result
+            scanner.stop();
+            stream.getTracks().forEach(track => track.stop());
+            processResult(result.data, currentLat, currentLon);
+          });
+          scanner.start();
+        } catch (err) {
+          statusEl.textContent = 'Camera access denied or unavailable: ' + err;
+          statusEl.style.backgroundColor = 'lightcoral';
+        }
+      }, (err) => {
+        statusEl.textContent = 'Location access denied: ' + err.message;
+        statusEl.style.backgroundColor = 'lightcoral';
+      });
+    }
+
+    /**
+     * Process the scanned QR code result, compare tokens and calculate
+     * distance using the haversine formula.
+     */
+    function processResult(scannedData, currentLat, currentLon) {
+      try {
+        const scannedUrl = new URL(scannedData);
+        const scannedParams = scannedUrl.searchParams;
+        const scannedToken = scannedParams.get('token');
+        const scannedLat = parseFloat(scannedParams.get('lat'));
+        const scannedLon = parseFloat(scannedParams.get('lon'));
+        const tokenMatches = scannedToken === expectedToken;
+        const distance = getDistance(originLat, originLon, currentLat, currentLon);
+        const withinRange = distance < 100; // threshold of 100 meters
+        if (tokenMatches && withinRange) {
+          statusEl.textContent = 'Verification successful!';
+          statusEl.style.backgroundColor = 'lightgreen';
+        } else {
+          let msg = '';
+          if (!tokenMatches) msg += 'QR token mismatch. ';
+          if (!withinRange) msg += 'Location mismatch.';
+          statusEl.textContent = msg || 'Invalid data.';
+          statusEl.style.backgroundColor = 'lightcoral';
+        }
+      } catch (err) {
+        statusEl.textContent = 'Invalid QR code data.';
+        statusEl.style.backgroundColor = 'lightcoral';
+      }
+    }
+    
+    /**
+     * Calculate distance between two latitude/longitude points using the
+     * haversine formula. Returns distance in metres.
+     */
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // metres (mean Earth radius)
+      const phi1 = lat1 * Math.PI / 180;
+      const phi2 = lat2 * Math.PI / 180;
+      const dPhi = (lat2 - lat1) * Math.PI / 180;
+      const dLambda = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(dLambda / 2) * Math.sin(dLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+  </script>
+</body>
+</html>

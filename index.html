@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ridify</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 50px;
+      margin: 0;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #qr-container {
+      margin-top: 20px;
+    }
+    #result {
+      margin-top: 20px;
+    }
+    #link-field {
+      width: 80%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+    #copy-btn {
+      padding: 8px 12px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ridify</h1>
+  <button id="create-btn">Create QR Code</button>
+  <div id="qr-container"></div>
+  <div id="result"></div>
+
+  <!-- QRCode library for client-side QR generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    // Helper to generate random token (UUID) using browser crypto API
+    function generateToken() {
+      if (crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      // Fallback for older browsers
+      return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      );
+    }
+
+    document.getElementById('create-btn').addEventListener('click', () => {
+      // Request geolocation permission
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition((position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const token = generateToken();
+        // Build a link to the scan page with query parameters for token and coordinates
+        const base = window.location.href.replace(/[^\/]*$/, '');
+        const link = `${base}scan.html?token=${encodeURIComponent(token)}&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+        // Clear existing QR code, if any
+        const qrContainer = document.getElementById('qr-container');
+        qrContainer.innerHTML = '';
+        // Generate QR code with the link
+        new QRCode(qrContainer, {
+          text: link,
+          width: 200,
+          height: 200
+        });
+        // Display link with copy functionality
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '';
+        const p = document.createElement('p');
+        p.textContent = 'Share this link:';
+        const input = document.createElement('input');
+        input.id = 'link-field';
+        input.readOnly = true;
+        input.value = link;
+        const copyButton = document.createElement('button');
+        copyButton.id = 'copy-btn';
+        copyButton.textContent = 'Copy Link';
+        copyButton.addEventListener('click', () => {
+          input.select();
+          document.execCommand('copy');
+          alert('Link copied to clipboard');
+        });
+        resultDiv.appendChild(p);
+        resultDiv.appendChild(input);
+        resultDiv.appendChild(copyButton);
+      }, (error) => {
+        alert('Unable to access location: ' + error.message);
+      });
+    });
+  </script>
+</body>
+</html>
