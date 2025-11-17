@@ -40,16 +40,7 @@
       background: var(--bg);
     }
 
-    .app-notch {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 42%;
-      height: 18px;
-      background: #111111;
-      border-radius: 0 0 18px 18px;
-    }
+    /* removed .app-notch visual bar */
 
     .app-main {
       width: 100%;
@@ -211,7 +202,7 @@
 </head>
 <body>
   <div class="app-frame">
-    <div class="app-notch"></div>
+    <!-- removed app-notch -->
 
     <div class="app-main">
       <h1 class="logo">RIDIFY</h1>
@@ -261,8 +252,6 @@
     const resultDiv = document.getElementById("result");
     const cancelBtn = document.getElementById("cancel-btn");
 
-    let originLat = null;
-    let originLon = null;
     let locationRequestCanceled = false;
 
     function setIconStatus(el, ok) {
@@ -272,8 +261,6 @@
 
     function showHome() {
       // reset state
-      originLat = null;
-      originLon = null;
       locationRequestCanceled = true;
 
       createBtn.style.display = "inline-block";
@@ -308,7 +295,7 @@
       showLocationStep();
     });
 
-    // Location button: request geolocation and then generate QR
+    // Location button: request geolocation (for demo only) and then generate QR
     locationBtn.addEventListener("click", () => {
       if (!navigator.geolocation) {
         alert("Geolocation is not supported by your browser.");
@@ -319,11 +306,10 @@
       locationRequestCanceled = false;
 
       navigator.geolocation.getCurrentPosition(
-        position => {
+        () => {
           if (locationRequestCanceled) return;
 
-          originLat = position.coords.latitude;
-          originLon = position.coords.longitude;
+          // We intentionally ignore the actual coordinates.
           setIconStatus(locationBtn, true);
           locationText.textContent = "Location allowed. Generating ride code…";
 
@@ -339,13 +325,9 @@
     });
 
     function generateQrAndShow() {
-      if (originLat == null || originLon == null) return;
-
       const token = generateToken();
       const base = window.location.href.replace(/[^\/]*$/, "");
-      const link = `${base}scan.html?token=${encodeURIComponent(
-        token
-      )}&lat=${encodeURIComponent(originLat)}&lon=${encodeURIComponent(originLon)}`;
+      const link = `${base}scan.html?token=${encodeURIComponent(token)}`;
 
       qrContainer.innerHTML = "";
       new QRCode(qrContainer, {
