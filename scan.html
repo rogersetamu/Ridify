@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ridify - Scan</title>
@@ -39,16 +42,7 @@
       background: var(--bg);
     }
 
-    .app-notch {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 42%;
-      height: 18px;
-      background: #111111;
-      border-radius: 0 0 18px 18px;
-    }
+    /* removed .app-notch bar */
 
     .app-main {
       width: 100%;
@@ -142,7 +136,7 @@
 </head>
 <body>
   <div class="app-frame">
-    <div class="app-notch"></div>
+    <!-- removed app-notch -->
 
     <div class="app-main">
       <div>
@@ -174,15 +168,12 @@
 
     const params = new URLSearchParams(window.location.search);
     const expectedToken = params.get('token');
-    const originLat = parseFloat(params.get('lat'));
-    const originLon = parseFloat(params.get('lon'));
 
-    let currentLat = null;
-    let currentLon = null;
     let cameraStream = null;
     let scanner = null;
+    let locationGranted = false;
 
-    if (!expectedToken || isNaN(originLat) || isNaN(originLon)) {
+    if (!expectedToken) {
       statusEl.textContent = 'Invalid or missing parameters in the link.';
       statusEl.style.backgroundColor = 'lightcoral';
     }
@@ -193,9 +184,9 @@
     }
 
     function maybeStartScanner() {
-      if (!expectedToken || isNaN(originLat) || isNaN(originLon)) return;
-      if (currentLat == null || currentLon == null) return;
+      if (!expectedToken) return;
       if (!cameraStream) return;
+      if (!locationGranted) return; // still require location button press for the demo
       if (scanner) return;
 
       statusEl.textContent = 'Point your camera at the QR code.';
@@ -209,6 +200,7 @@
       scanner.start();
     }
 
+    // Location button: ask for permission (demo only, no location logic)
     locationBtn.addEventListener('click', () => {
       if (!navigator.geolocation) {
         statusEl.textContent = 'Geolocation is not supported on this device.';
@@ -219,15 +211,15 @@
       statusEl.style.backgroundColor = '#f0f0f0';
 
       navigator.geolocation.getCurrentPosition(
-        pos => {
-          currentLat = pos.coords.latitude;
-          currentLon = pos.coords.longitude;
+        () => {
+          locationGranted = true;
           setIconStatus(locationBtn, true);
           statusEl.textContent = 'Location allowed. Now allow camera.';
           statusEl.style.backgroundColor = '#d4edda';
           maybeStartScanner();
         },
         err => {
+          locationGranted = false;
           setIconStatus(locationBtn, false);
           statusEl.textContent = 'Location access denied: ' + err.message;
           statusEl.style.backgroundColor = 'lightcoral';
@@ -235,6 +227,7 @@
       );
     });
 
+    // Camera button
     cameraBtn.addEventListener('click', async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         statusEl.textContent = 'Camera access is not supported on this device.';
@@ -267,21 +260,14 @@
         const scannedUrl = new URL(scannedData);
         const scannedParams = scannedUrl.searchParams;
         const scannedToken = scannedParams.get('token');
-        const scannedLat = parseFloat(scannedParams.get('lat'));
-        const scannedLon = parseFloat(scannedParams.get('lon'));
 
         const tokenMatches = scannedToken === expectedToken;
-        const distance = getDistance(originLat, originLon, currentLat, currentLon);
-        const withinRange = distance < 100;
 
-        if (tokenMatches && withinRange) {
+        if (tokenMatches) {
           statusEl.textContent = 'Verification successful';
           statusEl.style.backgroundColor = 'lightgreen';
         } else {
-          let msg = '';
-          if (!tokenMatches) msg += 'QR token mismatch. ';
-          if (!withinRange) msg += 'Location mismatch.';
-          statusEl.textContent = msg || 'Invalid data.';
+          statusEl.textContent = 'QR code does not match this ride link.';
           statusEl.style.backgroundColor = 'lightcoral';
         }
       } catch (err) {
@@ -289,22 +275,7 @@
         statusEl.style.backgroundColor = 'lightcoral';
       }
     }
-
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
-      const phi1 = (lat1 * Math.PI) / 180;
-      const phi2 = (lat2 * Math.PI) / 180;
-      const dPhi = ((lat2 - lat1) * Math.PI) / 180;
-      const dLambda = ((lon2 - lon1) * Math.PI) / 180;
-      const a =
-        Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
-        Math.cos(phi1) *
-          Math.cos(phi2) *
-          Math.sin(dLambda / 2) *
-          Math.sin(dLambda / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
   </script>
 </body>
 </html>
+
