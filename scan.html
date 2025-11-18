@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ridify - Scan</title>
   <style>
     :root {
@@ -103,12 +103,18 @@
       color: #155724;
     }
 
-    video {
+    /* Video preview area */
+    #video {
       width: 100%;
       max-width: 340px;
       border-radius: 18px;
       border: 1px solid #d0d0d0;
       background: #000000;
+    }
+
+    /* Hidden canvas for decoding */
+    #canvas {
+      display: none;
     }
 
     #status {
@@ -134,122 +140,183 @@
     <div class="app-main">
       <div>
         <h1 class="logo">RIDIFY</h1>
-        <p class="subtitle">Tap the icons to allow location and camera to verify your ride.</p>
+        <p class="subtitle">
+          Tap the icons to allow location and camera to verify your ride.
+        </p>
       </div>
 
       <div class="icon-row">
-        <button class="icon-btn status-bad" id="location-btn" aria-label="Allow location">
+        <button
+          class="icon-btn status-bad"
+          id="location-btn"
+          aria-label="Allow location"
+        >
           📍
         </button>
-        <button class="icon-btn status-bad" id="camera-btn" aria-label="Allow camera">
+        <button
+          class="icon-btn status-bad"
+          id="camera-btn"
+          aria-label="Allow camera"
+        >
           📷
         </button>
       </div>
 
-      <video id="preview" playsinline></video>
+      <video id="video" playsinline></video>
+      <canvas id="canvas"></canvas>
+
       <div id="status">Waiting for permissions…</div>
     </div>
   </div>
 
-  <script type="module">
-    import QrScanner from 'https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js';
+  <!-- jsQR: pure JS QR decoder -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 
-    const video = document.getElementById('preview');
-    const statusEl = document.getElementById('status');
-    const locationBtn = document.getElementById('location-btn');
-    const cameraBtn = document.getElementById('camera-btn');
+  <script>
+    const statusEl = document.getElementById("status");
+    const locationBtn = document.getElementById("location-btn");
+    const cameraBtn = document.getElementById("camera-btn");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
 
     const params = new URLSearchParams(window.location.search);
-    const expectedToken = params.get('token');
+    const expectedToken = params.get("token");
 
-    let cameraStream = null;
-    let scanner = null;
     let locationGranted = false;
+    let cameraStarted = false;
+    let scanningActive = false;
+    let stream = null;
 
     if (!expectedToken) {
-      statusEl.textContent = 'Invalid or missing parameters in the link.';
-      statusEl.style.backgroundColor = 'lightcoral';
+      statusEl.textContent = "Invalid or missing parameters in the link.";
+      statusEl.style.backgroundColor = "lightcoral";
     }
 
     function setIconStatus(el, ok) {
-      el.classList.toggle('status-good', ok);
-      el.classList.toggle('status-bad', !ok);
+      el.classList.toggle("status-good", ok);
+      el.classList.toggle("status-bad", !ok);
     }
 
-    function maybeStartScanner() {
-      if (!expectedToken) return;
-      if (!cameraStream) return;
-      if (!locationGranted) return;
-      if (scanner) return;
-
-      statusEl.textContent = 'Point your camera at the QR code.';
-      statusEl.style.backgroundColor = '#e0f0ff';
-
-      scanner = new QrScanner(video, result => {
-        scanner.stop();
-        cameraStream.getTracks().forEach(track => track.stop());
-        processResult(result.data);
-      });
-      scanner.start();
+    function stopScanner() {
+      scanningActive = false;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+      }
     }
-
-    // Fake location permission: no geolocation API, just flip to "allowed"
-    locationBtn.addEventListener('click', () => {
-      locationGranted = true;
-      setIconStatus(locationBtn, true);
-      statusEl.textContent = 'Location allowed. Now allow camera.';
-      statusEl.style.backgroundColor = '#d4edda';
-      maybeStartScanner();
-    });
-
-    // Camera button
-    cameraBtn.addEventListener('click', async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        statusEl.textContent = 'Camera access is not supported on this device.';
-        statusEl.style.backgroundColor = 'lightcoral';
-        return;
-      }
-      statusEl.textContent = 'Requesting camera permission…';
-      statusEl.style.backgroundColor = '#f0f0f0';
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
-        cameraStream = stream;
-        video.srcObject = stream;
-        await video.play();
-        setIconStatus(cameraBtn, true);
-        statusEl.textContent = 'Camera allowed. Now scan the QR code.';
-        statusEl.style.backgroundColor = '#d4edda';
-        maybeStartScanner();
-      } catch (err) {
-        setIconStatus(cameraBtn, false);
-        statusEl.textContent = 'Camera access denied or unavailable: ' + err;
-        statusEl.style.backgroundColor = 'lightcoral';
-      }
-    });
 
     function processResult(scannedData) {
       try {
         const scannedUrl = new URL(scannedData);
         const scannedParams = scannedUrl.searchParams;
-        const scannedToken = scannedParams.get('token');
-
+        const scannedToken = scannedParams.get("token");
         const tokenMatches = scannedToken === expectedToken;
 
         if (tokenMatches) {
-          statusEl.textContent = 'Verification successful';
-          statusEl.style.backgroundColor = 'lightgreen';
+          statusEl.textContent = "Verification successful";
+          statusEl.style.backgroundColor = "lightgreen";
         } else {
-          statusEl.textContent = 'QR code does not match this ride link.';
-          statusEl.style.backgroundColor = 'lightcoral';
+          statusEl.textContent = "QR code does not match this ride link.";
+          statusEl.style.backgroundColor = "lightcoral";
         }
       } catch (err) {
-        statusEl.textContent = 'Invalid QR code data.';
-        statusEl.style.backgroundColor = 'lightcoral';
+        statusEl.textContent = "Invalid QR code data.";
+        statusEl.style.backgroundColor = "lightcoral";
       }
     }
+
+    function scanFrame() {
+      if (!scanningActive) return;
+
+      if (
+        video.readyState === video.HAVE_ENOUGH_DATA &&
+        video.videoWidth > 0 &&
+        video.videoHeight > 0
+      ) {
+        // Match canvas to video size
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+
+        const code = jsQR(imageData.data, canvas.width, canvas.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code && code.data) {
+          stopScanner();
+          processResult(code.data);
+          return;
+        }
+      }
+
+      // Keep scanning
+      requestAnimationFrame(scanFrame);
+    }
+
+    function maybeStartScanner() {
+      if (!expectedToken) return;
+      if (!locationGranted) return;
+      if (!cameraStarted) return;
+      if (scanningActive) return;
+
+      scanningActive = true;
+      statusEl.textContent = "Point your camera at the QR code.";
+      statusEl.style.backgroundColor = "#e0f0ff";
+      requestAnimationFrame(scanFrame);
+    }
+
+    // Fake location permission: no geolocation API, just flip to "allowed"
+    locationBtn.addEventListener("click", () => {
+      locationGranted = true;
+      setIconStatus(locationBtn, true);
+      statusEl.textContent = "Location allowed. Now allow camera.";
+      statusEl.style.backgroundColor = "#d4edda";
+      maybeStartScanner();
+    });
+
+    // Camera button: real getUserMedia
+    cameraBtn.addEventListener("click", async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusEl.textContent =
+          "Camera access is not supported on this device.";
+        statusEl.style.backgroundColor = "lightcoral";
+        return;
+      }
+
+      statusEl.textContent = "Requesting camera permission…";
+      statusEl.style.backgroundColor = "#f0f0f0";
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+
+        video.srcObject = stream;
+        await video.play();
+
+        cameraStarted = true;
+        setIconStatus(cameraBtn, true);
+        statusEl.textContent = "Camera allowed. Now scan the QR code.";
+        statusEl.style.backgroundColor = "#d4edda";
+
+        maybeStartScanner();
+      } catch (err) {
+        cameraStarted = false;
+        setIconStatus(cameraBtn, false);
+        statusEl.textContent =
+          "Camera access denied or unavailable: " + err;
+        statusEl.style.backgroundColor = "lightcoral";
+      }
+    });
   </script>
 </body>
 </html>
