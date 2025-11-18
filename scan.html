@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!DOCTYPE html>
-<html lang="en">
-<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ridify - Scan</title>
@@ -41,8 +38,6 @@
       justify-content: flex-start;
       background: var(--bg);
     }
-
-    /* removed .app-notch bar */
 
     .app-main {
       width: 100%;
@@ -136,8 +131,6 @@
 </head>
 <body>
   <div class="app-frame">
-    <!-- removed app-notch -->
-
     <div class="app-main">
       <div>
         <h1 class="logo">RIDIFY</h1>
@@ -186,7 +179,7 @@
     function maybeStartScanner() {
       if (!expectedToken) return;
       if (!cameraStream) return;
-      if (!locationGranted) return; // still require location button press for the demo
+      if (!locationGranted) return;
       if (scanner) return;
 
       statusEl.textContent = 'Point your camera at the QR code.';
@@ -200,31 +193,13 @@
       scanner.start();
     }
 
-    // Location button: ask for permission (demo only, no location logic)
+    // Fake location permission: no geolocation API, just flip to "allowed"
     locationBtn.addEventListener('click', () => {
-      if (!navigator.geolocation) {
-        statusEl.textContent = 'Geolocation is not supported on this device.';
-        statusEl.style.backgroundColor = 'lightcoral';
-        return;
-      }
-      statusEl.textContent = 'Requesting location permission…';
-      statusEl.style.backgroundColor = '#f0f0f0';
-
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          locationGranted = true;
-          setIconStatus(locationBtn, true);
-          statusEl.textContent = 'Location allowed. Now allow camera.';
-          statusEl.style.backgroundColor = '#d4edda';
-          maybeStartScanner();
-        },
-        err => {
-          locationGranted = false;
-          setIconStatus(locationBtn, false);
-          statusEl.textContent = 'Location access denied: ' + err.message;
-          statusEl.style.backgroundColor = 'lightcoral';
-        }
-      );
+      locationGranted = true;
+      setIconStatus(locationBtn, true);
+      statusEl.textContent = 'Location allowed. Now allow camera.';
+      statusEl.style.backgroundColor = '#d4edda';
+      maybeStartScanner();
     });
 
     // Camera button
@@ -276,6 +251,9 @@
       }
     }
   </script>
+</body>
+</html>
+
 </body>
 </html>
 
