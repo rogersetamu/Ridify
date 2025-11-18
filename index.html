@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ridify</title>
+  <title>Ridify - Scan</title>
   <style>
     :root {
       --bg: #ffffff;
       --primary: #4d79a3;
-      --primary-dark: #29405a;
       --text: #111111;
       --subtle: #e3ecf4;
       --border: #b3c4d4;
@@ -40,8 +39,6 @@
       background: var(--bg);
     }
 
-    /* removed .app-notch visual bar */
-
     .app-main {
       width: 100%;
       flex: 1;
@@ -49,56 +46,28 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 24px;
+      gap: 20px;
       text-align: center;
     }
 
     .logo {
-      font-size: 32px;
-      letter-spacing: 0.35em;
-      text-transform: uppercase;
-      font-weight: 700;
       margin: 0;
+      font-size: 24px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
     }
 
     .subtitle {
-      margin: 0;
+      margin: 4px 0 0;
       font-size: 14px;
       color: #666666;
-      padding: 0 10px;
     }
 
-    .primary-btn {
-      min-width: 60%;
-      max-width: 260px;
-      padding: 16px 24px;
-      border-radius: 999px;
-      border: none;
-      background: var(--primary);
-      color: #ffffff;
-      font-weight: 700;
-      font-size: 18px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      cursor: pointer;
-      box-shadow: 0 6px 0 var(--primary-dark);
-      transition: transform 0.08s ease, box-shadow 0.08s ease,
-        background 0.08s ease;
-    }
-
-    .primary-btn:active {
-      transform: translateY(3px);
-      box-shadow: 0 3px 0 var(--primary-dark);
-      background: #426b92;
-    }
-
-    /* Location step */
-    .location-step {
-      width: 100%;
-      display: none; /* shown after START */
-      flex-direction: column;
-      align-items: center;
+    .icon-row {
+      display: flex;
+      justify-content: center;
       gap: 16px;
+      margin-top: 10px;
     }
 
     .icon-btn {
@@ -134,62 +103,25 @@
       color: #155724;
     }
 
-    /* QR step */
-    .qr-area {
+    /* QR scanner container */
+    #reader {
       width: 100%;
-      display: none;          /* shown after location ok */
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      margin-top: 8px;
-      padding-bottom: 8px;
+      max-width: 340px;
+      border-radius: 18px;
+      border: 1px solid #d0d0d0;
+      background: #000000;
+      overflow: hidden;
+      min-height: 220px;
     }
 
-    #qr-container {
-      min-height: 0;
-    }
-
-    #result {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-    }
-
-    #link-field {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      font-size: 13px;
-      outline: none;
-    }
-
-    #copy-btn {
-      margin-top: 4px;
+    #status {
+      margin-top: 16px;
+      font-size: 15px;
       padding: 10px 16px;
       border-radius: 999px;
-      border: none;
-      background: var(--subtle);
-      color: var(--primary-dark);
-      font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-    }
-
-    #cancel-btn {
-      display: none;          /* only visible in location/QR states */
-      margin-top: 12px;
-      padding: 10px 16px;
-      border-radius: 999px;
-      border: none;
-      background: #f7d9d9;
-      color: #a33;
-      font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
+      display: inline-block;
+      min-width: 220px;
+      background: #f0f0f0;
     }
 
     @media (max-height: 640px) {
@@ -202,178 +134,139 @@
 </head>
 <body>
   <div class="app-frame">
-    <!-- removed app-notch -->
-
     <div class="app-main">
-      <h1 class="logo">RIDIFY</h1>
+      <div>
+        <h1 class="logo">RIDIFY</h1>
+        <p class="subtitle">Tap the icons to allow location and camera to verify your ride.</p>
+      </div>
 
-      <!-- Home state -->
-      <button id="create-btn" class="primary-btn">START</button>
-
-      <!-- Location permission step -->
-      <div id="location-step" class="location-step">
-        <p id="location-text" class="subtitle">
-          Tap the icon to allow location so we can generate your ride code.
-        </p>
-        <button id="location-btn" class="icon-btn status-bad" aria-label="Allow location">
+      <div class="icon-row">
+        <button class="icon-btn status-bad" id="location-btn" aria-label="Allow location">
           📍
+        </button>
+        <button class="icon-btn status-bad" id="camera-btn" aria-label="Allow camera">
+          📷
         </button>
       </div>
 
-      <!-- QR code step -->
-      <div class="qr-area" id="qr-area">
-        <div id="qr-container"></div>
-        <div id="result"></div>
-      </div>
-
-      <!-- Cancel (used in both non-home states) -->
-      <button id="cancel-btn">Cancel</button>
+      <div id="reader"></div>
+      <div id="status">Waiting for permissions…</div>
     </div>
   </div>
 
-  <!-- QRCode library for client-side QR generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- New QR scanner library (works well in static HTML) -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
-    function generateToken() {
-      if (crypto.randomUUID) {
-        return crypto.randomUUID();
-      }
-      return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> (c / 4)).toString(16)
-      );
+    const statusEl = document.getElementById('status');
+    const locationBtn = document.getElementById('location-btn');
+    const cameraBtn = document.getElementById('camera-btn');
+
+    const params = new URLSearchParams(window.location.search);
+    const expectedToken = params.get('token');
+
+    let locationGranted = false;
+    let cameraPressed = false;
+    let html5QrCode = null;
+    let scannerRunning = false;
+
+    if (!expectedToken) {
+      statusEl.textContent = 'Invalid or missing parameters in the link.';
+      statusEl.style.backgroundColor = 'lightcoral';
     }
-
-    const createBtn = document.getElementById("create-btn");
-    const locationStep = document.getElementById("location-step");
-    const locationBtn = document.getElementById("location-btn");
-    const locationText = document.getElementById("location-text");
-    const qrArea = document.getElementById("qr-area");
-    const qrContainer = document.getElementById("qr-container");
-    const resultDiv = document.getElementById("result");
-    const cancelBtn = document.getElementById("cancel-btn");
-
-    let locationRequestCanceled = false;
 
     function setIconStatus(el, ok) {
-      el.classList.toggle("status-good", ok);
-      el.classList.toggle("status-bad", !ok);
+      el.classList.toggle('status-good', ok);
+      el.classList.toggle('status-bad', !ok);
     }
 
-    function showHome() {
-      // reset state
-      locationRequestCanceled = true;
+    function processResult(scannedData) {
+      try {
+        const scannedUrl = new URL(scannedData);
+        const scannedParams = scannedUrl.searchParams;
+        const scannedToken = scannedParams.get('token');
 
-      createBtn.style.display = "inline-block";
-      locationStep.style.display = "none";
-      qrArea.style.display = "none";
-      cancelBtn.style.display = "none";
+        const tokenMatches = scannedToken === expectedToken;
 
-      setIconStatus(locationBtn, false);
-      locationText.textContent =
-        "Tap the icon to allow location so we can generate your ride code.";
-
-      qrContainer.innerHTML = "";
-      resultDiv.innerHTML = "";
+        if (tokenMatches) {
+          statusEl.textContent = 'Verification successful';
+          statusEl.style.backgroundColor = 'lightgreen';
+        } else {
+          statusEl.textContent = 'QR code does not match this ride link.';
+          statusEl.style.backgroundColor = 'lightcoral';
+        }
+      } catch (err) {
+        statusEl.textContent = 'Invalid QR code data.';
+        statusEl.style.backgroundColor = 'lightcoral';
+      }
     }
 
-    function showLocationStep() {
-      createBtn.style.display = "none";
-      locationStep.style.display = "flex";
-      qrArea.style.display = "none";
-      cancelBtn.style.display = "inline-block";
-      locationRequestCanceled = false;
+    function stopScanner() {
+      if (html5QrCode && scannerRunning) {
+        html5QrCode.stop().catch(() => {}).finally(() => {
+          scannerRunning = false;
+        });
+      }
     }
 
-    function showQrStep() {
-      locationStep.style.display = "none";
-      qrArea.style.display = "flex";
-      cancelBtn.style.display = "inline-block";
-    }
+    function maybeStartScanner() {
+      if (!expectedToken) return;
+      if (!locationGranted) return;
+      if (!cameraPressed) return;
+      if (scannerRunning) return;
 
-    // START button: go to location step
-    createBtn.addEventListener("click", () => {
-      showLocationStep();
-    });
-
-    // Location button: request geolocation (for demo only) and then generate QR
-    locationBtn.addEventListener("click", () => {
-      if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
-        return;
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode('reader');
       }
 
-      locationText.textContent = "Requesting location permission…";
-      locationRequestCanceled = false;
+      scannerRunning = true;
+      statusEl.textContent = 'Point your camera at the QR code.';
+      statusEl.style.backgroundColor = '#e0f0ff';
 
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          if (locationRequestCanceled) return;
-
-          // We intentionally ignore the actual coordinates.
-          setIconStatus(locationBtn, true);
-          locationText.textContent = "Location allowed. Generating ride code…";
-
-          generateQrAndShow();
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: 250
         },
-        error => {
-          if (locationRequestCanceled) return;
-
-          setIconStatus(locationBtn, false);
-          locationText.textContent = "Location access denied: " + error.message;
+        decodedText => {
+          // Got a QR code, stop and evaluate
+          stopScanner();
+          processResult(decodedText);
+        },
+        errorMessage => {
+          // Ignore continuous decode errors
+          // console.log(errorMessage);
         }
-      );
-    });
-
-    function generateQrAndShow() {
-      const token = generateToken();
-      const base = window.location.href.replace(/[^\/]*$/, "");
-      const link = `${base}scan.html?token=${encodeURIComponent(token)}`;
-
-      qrContainer.innerHTML = "";
-      new QRCode(qrContainer, {
-        text: link,
-        width: 200,
-        height: 200
+      ).then(() => {
+        // Scanner started successfully
+      }).catch(err => {
+        scannerRunning = false;
+        setIconStatus(cameraBtn, false);
+        statusEl.textContent = 'Camera error: ' + err;
+        statusEl.style.backgroundColor = 'lightcoral';
       });
-
-      resultDiv.innerHTML = "";
-      const p = document.createElement("p");
-      p.textContent = "Share this link with your rider:";
-
-      const input = document.createElement("input");
-      input.id = "link-field";
-      input.readOnly = true;
-      input.value = link;
-
-      const copyButton = document.createElement("button");
-      copyButton.id = "copy-btn";
-      copyButton.textContent = "Copy link";
-      copyButton.addEventListener("click", () => {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(link).then(() => {
-            alert("Link copied to clipboard");
-          });
-        } else {
-          input.select();
-          document.execCommand("copy");
-          alert("Link copied to clipboard");
-        }
-      });
-
-      resultDiv.appendChild(p);
-      resultDiv.appendChild(input);
-      resultDiv.appendChild(copyButton);
-
-      showQrStep();
     }
 
-    // Cancel from either location step or QR step
-    cancelBtn.addEventListener("click", () => {
-      showHome();
+    // Fake location permission: just flip to allowed on tap
+    locationBtn.addEventListener('click', () => {
+      locationGranted = true;
+      setIconStatus(locationBtn, true);
+      statusEl.textContent = 'Location allowed. Now allow camera.';
+      statusEl.style.backgroundColor = '#d4edda';
+      maybeStartScanner();
     });
 
-    // initial state
-    showHome();
+    // Camera button: user taps, we start scanner (which will prompt for camera)
+    cameraBtn.addEventListener('click', () => {
+      cameraPressed = true;
+      setIconStatus(cameraBtn, true);
+      statusEl.textContent = 'Requesting camera permission…';
+      statusEl.style.backgroundColor = '#f0f0f0';
+      maybeStartScanner();
+    });
+
+    // If you ever want to stop the scanner manually, call stopScanner()
   </script>
 </body>
 </html>
+
